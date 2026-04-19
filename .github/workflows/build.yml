@@ -1,67 +1,64 @@
-name: Build Windows KF6 Qt6
+name: Build Windows with Craft (KF6 Qt6)
 
 on:
   push:
-    paths-ignore:
-      - README.md
+    paths-ignore: [README.md]
   pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup MSYS2 UCRT64
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          update: true
-          install: >-
-            git
-            cmake
-            ninja
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-qt6
-            mingw-w64-ucrt-x86_64-qt6-tools
-            mingw-w64-ucrt-x86_64-kf6
-            mingw-w64-ucrt-x86_64-kf6-ki18n
-            mingw-w64-ucrt-x86_64-kf6-kxmlgui
-            mingw-w64-ucrt-x86_64-kf6-kio
-            mingw-w64-ucrt-x86_64-kf6-kparts
-            mingw-w64-ucrt-x86_64-kf6-kcrash
-            mingw-w64-ucrt-x86_64-icoutils
-
-      - name: CMake Configure (KF6 Qt6)
+      - name: Install KDE Craft
+        shell: pwsh
         run: |
-          rm -rf build && mkdir build && cd build
-          cmake .. \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_DOCS=OFF \
-            -DBUILD_TESTING=OFF \
-            -DBUILD_PO=OFF \
-            -DBUILD_WITH_QT6=ON \
+          git clone https://invent.kde.org/packaging/craft.git
+          mkdir C:\CraftRoot
+
+      - name: Setup Craft
+        shell: cmd
+        run: |
+          set CRAFT_ROOT=C:\CraftRoot
+          python craft/craft.py --install qtbase
+          python craft/craft.py --install extra-cmake-modules
+          python craft/craft.py --install kf6coreaddons
+          python craft/craft.py --install kf6i18n
+          python craft/craft.py --install kf6config
+          python craft/craft.py --install kf6xmlgui
+          python craft/craft.py --install kf6widgetsaddons
+          python craft/craft.py --install kf6kio
+          python craft/craft.py --install kf6parts
+          python craft/craft.py --install kf6crash
+
+      - name: Build with Craft
+        shell: cmd
+        run: |
+          set CRAFT_ROOT=C:\CraftRoot
+          call C:\CraftRoot\craft\craftenv.cmd
+          mkdir build
+          cd build
+          cmake .. -G Ninja ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DBUILD_DOCS=OFF ^
+            -DBUILD_TESTING=OFF ^
+            -DBUILD_PO=OFF ^
+            -DBUILD_WITH_QT6=ON ^
             -DQT_MAJOR_VERSION=6
+          ninja
 
-      - name: Build
-        run: ninja -C build
-
-      - name: Copy EXE to output
+      - name: Copy EXE
+        shell: pwsh
         run: |
-          mkdir -p output
-          cp build/bin/*.exe output/ 2>/dev/null
-          cp build/program/*.exe output/ 2>/dev/null
-          cp build/okteta.exe output/ 2>/dev/null
-          cp build/kcalc.exe output/ 2>/dev/null
+          mkdir output
+          cp build/bin/*.exe output/ 2>$null
+          cp build/program/*.exe output/ 2>$null
+          cp build/*.exe output/ 2>$null
 
-      - name: Upload artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: windows-kf6-qt6
+          name: kde-craft-windows-kf6
           path: output/
