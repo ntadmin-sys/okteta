@@ -1,4 +1,4 @@
-name: Build Windows Qt5
+name: Build Windows KF6 Qt6
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
     defaults:
       run:
@@ -17,31 +17,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup MSYS2 UCRT64 & Qt5
+      - name: Setup MSYS2 UCRT64
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           update: true
           install: >-
             git
-            make
             cmake
             ninja
             mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-qt5
-            mingw-w64-ucrt-x86_64-qt5-tools
-            mingw-w64-ucrt-x86_64-extra-cmake-modules
-            mingw-w64-ucrt-x86_64-kf5-coreaddons
-            mingw-w64-ucrt-x86_64-kf5-i18n
-            mingw-w64-ucrt-x86_64-kf5-config
-            mingw-w64-ucrt-x86_64-kf5-xmlgui
-            mingw-w64-ucrt-x86_64-kf5-widgetsaddons
-            mingw-w64-ucrt-x86_64-kf5-kio
-            mingw-w64-ucrt-x86_64-kf5-parts
-            mingw-w64-ucrt-x86_64-kf5-crash
+            mingw-w64-ucrt-x86_64-qt6
+            mingw-w64-ucrt-x86_64-qt6-tools
+            mingw-w64-ucrt-x86_64-kf6
+            mingw-w64-ucrt-x86_64-kf6-ki18n
+            mingw-w64-ucrt-x86_64-kf6-kxmlgui
+            mingw-w64-ucrt-x86_64-kf6-kio
+            mingw-w64-ucrt-x86_64-kf6-kparts
+            mingw-w64-ucrt-x86_64-kf6-kcrash
             mingw-w64-ucrt-x86_64-icoutils
 
-      - name: Build CMake
+      - name: CMake Configure (KF6 Qt6)
         run: |
           rm -rf build && mkdir build && cd build
           cmake .. \
@@ -50,21 +46,22 @@ jobs:
             -DBUILD_DOCS=OFF \
             -DBUILD_TESTING=OFF \
             -DBUILD_PO=OFF \
-            -DCMAKE_DISABLE_FIND_PACKAGE_Qt6=ON \
-            -DCMAKE_CXX_FLAGS="-Wno-attributes -Wno-free-nonheap-object -fno-inline"
+            -DBUILD_WITH_QT6=ON \
+            -DQT_MAJOR_VERSION=6
 
-      - name: Compile
-        run: |
-          ninja -C build
+      - name: Build
+        run: ninja -C build
 
-      - name: Copy EXE
+      - name: Copy EXE to output
         run: |
           mkdir -p output
           cp build/bin/*.exe output/ 2>/dev/null
           cp build/program/*.exe output/ 2>/dev/null
+          cp build/okteta.exe output/ 2>/dev/null
+          cp build/kcalc.exe output/ 2>/dev/null
 
-      - name: Upload Windows Build
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-qt5-build
+          name: windows-kf6-qt6
           path: output/
