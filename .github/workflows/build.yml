@@ -1,42 +1,39 @@
-name: Build Okteta Windows (Craft on Ubuntu)
+name: Build Okteta Windows (Ubuntu + Craft)
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
-  pull_request:
-  workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: ubuntu-latest
     container:
       image: kdeorg/craft-windows-qt6:latest
+    timeout-minutes: 90
+
     steps:
-      - name: Checkout Okteta source
+      - name: Checkout latest Okteta
         uses: actions/checkout@v4
         with:
           repository: KDE/okteta
           fetch-depth: 1
 
-      - name: Build with Craft
+      - name: Build Okteta (Windows Qt6)
         shell: bash
         run: |
           source /craft/craftenv.sh
-          craft --no-cache okteta
+          craft -i okteta
 
-      - name: Package portable build
+      - name: Collect all files (portable)
         shell: bash
         run: |
-          mkdir -p dist
-          cp -r /craft/windows-msvc2019_64-cl-release/bin dist/
-          cp -r /craft/windows-msvc2019_64-cl-release/lib dist/
-          cp -r /craft/windows-msvc2019_64-cl-release/plugins dist/
-          cp -r /craft/windows-msvc2019_64-cl-release/share dist/
-          mkdir -p dist/okteta-windows
-          mv dist/bin dist/lib dist/plugins dist/share dist/okteta-windows/
+          mkdir -p upload
+          cp -r /craft/windows-msvc2019_64-cl-release/* upload/
+          ls -la upload/bin/
 
-      - name: Upload artifact
+      - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: okteta-windows-latest
-          path: dist/
+          path: upload/
