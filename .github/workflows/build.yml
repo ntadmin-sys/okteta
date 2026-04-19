@@ -1,64 +1,42 @@
-name: Build Windows with Craft (KF6 Qt6)
+name: Build Okteta Windows (Craft on Ubuntu)
 
 on:
   push:
-    paths-ignore: [README.md]
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: windows-latest
+  build-windows:
+    runs-on: ubuntu-latest
+    container:
+      image: kdeorg/craft-windows-qt6:latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install KDE Craft
-        shell: pwsh
-        run: |
-          git clone https://invent.kde.org/packaging/craft.git
-          mkdir C:\CraftRoot
-
-      - name: Setup Craft
-        shell: cmd
-        run: |
-          set CRAFT_ROOT=C:\CraftRoot
-          python craft/craft.py --install qtbase
-          python craft/craft.py --install extra-cmake-modules
-          python craft/craft.py --install kf6coreaddons
-          python craft/craft.py --install kf6i18n
-          python craft/craft.py --install kf6config
-          python craft/craft.py --install kf6xmlgui
-          python craft/craft.py --install kf6widgetsaddons
-          python craft/craft.py --install kf6kio
-          python craft/craft.py --install kf6parts
-          python craft/craft.py --install kf6crash
+      - name: Checkout Okteta source
+        uses: actions/checkout@v4
+        with:
+          repository: KDE/okteta
+          fetch-depth: 1
 
       - name: Build with Craft
-        shell: cmd
+        shell: bash
         run: |
-          set CRAFT_ROOT=C:\CraftRoot
-          call C:\CraftRoot\craft\craftenv.cmd
-          mkdir build
-          cd build
-          cmake .. -G Ninja ^
-            -DCMAKE_BUILD_TYPE=Release ^
-            -DBUILD_DOCS=OFF ^
-            -DBUILD_TESTING=OFF ^
-            -DBUILD_PO=OFF ^
-            -DBUILD_WITH_QT6=ON ^
-            -DQT_MAJOR_VERSION=6
-          ninja
+          source /craft/craftenv.sh
+          craft --no-cache okteta
 
-      - name: Copy EXE
-        shell: pwsh
+      - name: Package portable build
+        shell: bash
         run: |
-          mkdir output
-          cp build/bin/*.exe output/ 2>$null
-          cp build/program/*.exe output/ 2>$null
-          cp build/*.exe output/ 2>$null
+          mkdir -p dist
+          cp -r /craft/windows-msvc2019_64-cl-release/bin dist/
+          cp -r /craft/windows-msvc2019_64-cl-release/lib dist/
+          cp -r /craft/windows-msvc2019_64-cl-release/plugins dist/
+          cp -r /craft/windows-msvc2019_64-cl-release/share dist/
+          mkdir -p dist/okteta-windows
+          mv dist/bin dist/lib dist/plugins dist/share dist/okteta-windows/
 
-      - name: Upload
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kde-craft-windows-kf6
-          path: output/
+          name: okteta-windows-latest
+          path: dist/
